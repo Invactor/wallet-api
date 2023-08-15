@@ -8,12 +8,6 @@ import {
   TransactionBuilder
 } from 'stellar-sdk'
 
-import { Prisma } from './generated/prisma'
-
-export interface Context {
-  db: Prisma
-  request: any
-}
 
 export const AnchorXUSD = new Asset(
   'USD',

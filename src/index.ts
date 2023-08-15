@@ -1,8 +1,6 @@
 import { GraphQLServer } from 'graphql-yoga'
-import { importSchema } from 'graphql-import'
-import { Prisma } from './generated/prisma'
+import * as sqlite3 from 'sqlite3'
 import {
-  Context,
   allowTrust,
   createAccountInLedger,
   createTrustline,
@@ -21,50 +19,37 @@ import {
 
 import { AES, enc } from 'crypto-js'
 
-const ENVCryptoSecret = 'StellarIsAwesome-But-Do-Not-Put-This-Value-In-Code'
+
+const ENVCryptoSecret = '4da12d0d-8b0e-4b0a-8b0a-8b0e4b0a8b0e'
 
 const resolvers = {
+  
   Query: {
-    user(_, { username }, context: Context, info) {
-      return context.db.query.user(
-        {
-          where: {
-            username
-          }
-        },
-        info
-      )
+    async user(_, { username }, info) {
+      return await getUserByUsername(username)
+      
     }
   },
   Mutation: {
-    async signup(_, { username }, context: Context, info) {
-      let user = await context.db.query.user({
-        where: {
-          username: username
-        }
-      })
+    async signup(_, { username }, info) {
+      let user = await getUserByUsername(username);
 
       if (user) {
-        return user
+        return user;
       }
 
-      const keypair = Keypair.random()
+      const keypair = Keypair.random();
 
-      const secret = AES.encrypt(
-        keypair.secret(),
-        ENVCryptoSecret
-      ).toString()
+      const secret = AES.encrypt(keypair.secret(), ENVCryptoSecret).toString();
 
       const data = {
         username,
         stellarAccount: keypair.publicKey(),
-        stellarSeed: secret
-      }
+        stellarSeed: secret,
+      };
 
-      user = await context.db.mutation.createUser(
-        { data },
-        info
-      )
+      user = await createUser(data);
+
 
       /*
         In a production app, you don't want to block to do this
@@ -89,12 +74,11 @@ const resolvers = {
 
       It should be based on the Auth/session token.
     */
-    async payment(_, { amount, senderUsername, recipientUsername, memo }, context: Context, info) {
-      const result = await context.db.query.users({
-        where: {
-          username_in: [senderUsername, recipientUsername]
-        }
-      })
+    async payment(_, { amount, senderUsername, recipientUsername, memo }, info) {
+      const result= await getUsersByUsernameArray([senderUsername, recipientUsername]);
+      if (!Array.isArray(result)) {
+        throw new Error('Invalid result data');
+      }
 
       const sender = result.find(u => u.username === senderUsername)
       const recipient = result.find(u => u.username === recipientUsername)
@@ -121,12 +105,12 @@ const resolvers = {
         throw e
       }
     },
-    async credit(_, { amount, username }, context: Context, info) {
-      const user = await context.db.query.user({
-        where: {
-          username: username
-        }
-      })
+    async credit(_, { amount, username }, info) {
+      let user:any = await getUserByUsername(username);
+
+      if (!user) {
+        throw new Error('User not found');
+      }
 
       try {
         const { hash } = await payment(
@@ -143,13 +127,12 @@ const resolvers = {
         throw e
       }
     },
-    async debit(_, { amount, username }, context: Context, info) {
-      const user = await context.db.query.user({
-        where: {
-          username: username
-        }
-      })
+    async debit(_, { amount, username }, info) {
+      let user:any = await getUserByUsername(username);
 
+      if (!user) {
+        throw new Error('User not found');
+      }
       const keypair = Keypair.fromSecret(
         AES.decrypt(
           user.stellarSeed,
@@ -179,17 +162,54 @@ const resolvers = {
     }
   },
 }
+const db=new sqlite3.Database(':memory:');
+db.run(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    username TEXT,
+    stellarAccount TEXT,
+    stellarSeed TEXT
+  )
+`);
+async function getUserByUsername(username) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
+      if (err) reject(err);
+      resolve(row);
+    });
+  });
+}
+
+async function createUser(data) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT INTO users (username, stellarAccount, stellarSeed) VALUES (?, ?, ?)',
+      [data.username, data.stellarAccount, data.stellarSeed],
+      function (err) {
+        if (err) reject(err);
+        resolve({ id: this.lastID });
+      }
+    );
+  });
+}
+async function getUsersByUsernameArray(usernames) {
+  return new Promise((resolve, reject) => {
+    const placeholders = usernames.map(() => '?').join(',');
+    const query = `SELECT * FROM users WHERE username IN (${placeholders})`;
+    
+    db.all(query, usernames, (err, rows) => {
+      if (err) reject(err);
+      resolve(rows);
+    });
+  });
+}
 
 const server = new GraphQLServer({
   typeDefs: './src/schema.graphql',
   resolvers,
   context: req => ({
     ...req,
-    db: new Prisma({
-      endpoint: 'https://us1.prisma.sh/public-gravelcloud-78/anchorx-api/dev', // the endpoint of the Prisma API
-      debug: true, // log all GraphQL queries & mutations sent to the Prisma API
-      // secret: 'mysecret123', // only needed if specified in `database/prisma.yml`
-    }),
+    db
   }),
 })
 server.start(() => console.log('Server is running on http://localhost:4000'))

@@ -1,5 +1,9 @@
-# import User from './generated/prisma.graphql'
-
+type User {
+  id: ID!
+  username: String!
+  stellarAccount: String!
+  stellarSeed: String!
+}
 type Transaction {
   id: ID!
   memo: String

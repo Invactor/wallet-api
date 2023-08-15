@@ -1,6 +1,0 @@
-type User {
-  id: ID! @unique
-  username: String! @unique
-  stellarAccount: String!
-  stellarSeed: String!
-}
