@@ -8,18 +8,13 @@ import {
 } from './utils'
 
 import {
-  Asset,
   Keypair,
-  Memo,
-  Network,
-  Operation,
-  Server,
-  TransactionBuilder
 } from 'stellar-sdk'
 
 import { AES, enc } from 'crypto-js'
 
-
+const secretKey="SDFMDZI3GG3SJ3RNY4IA7D5NQAKB52Z5L6FZNMLHP6FK34IKWMF2P7OF"
+const publicKey="GBTM4HIIOGLORZEVMYCELCYGV445C3GPFKLWJRVHT46ZBJLSHCVEVEOJ"
 const ENVCryptoSecret = '4da12d0d-8b0e-4b0a-8b0a-8b0e4b0a8b0e'
 
 const resolvers = {
@@ -58,16 +53,18 @@ const resolvers = {
         provision the Stellar account.
       */
       await createAccountInLedger(keypair.publicKey())
+      /** we connot using Trustline to XML 
       await createTrustline(keypair)
       await allowTrust(keypair.publicKey())
+      */
       await payment(
         // keypair for issuing account - no bueno, we'll replace this later
-        Keypair.fromSecret('SBYZ5NEJ34Y3FTKADVBO3Y76U6VLTREJSW4MXYCVMUBTL2K3V4Y644UX'),
+        Keypair.fromSecret(secretKey),
         keypair.publicKey(),
         '10'
       )
 
-      return user
+      return await getUserByUsername(username)
     },
     /*
       For production apps don't rely  on the API to send you the senderUsername!
@@ -115,7 +112,7 @@ const resolvers = {
       try {
         const { hash } = await payment(
           // keypair for issuing account - no bueno
-          Keypair.fromSecret('SBYZ5NEJ34Y3FTKADVBO3Y76U6VLTREJSW4MXYCVMUBTL2K3V4Y644UX'),
+          Keypair.fromSecret(secretKey),
           user.stellarAccount,
           amount
         )
@@ -142,7 +139,7 @@ const resolvers = {
 
       // When you send back a custom asset to the issuing account, the
       // asset you send back get destroyed
-      const issuingAccount = 'GBX67BEOABQAELIP2XTC6JXHJPASKYCIQNS7WF6GWPSCBEAJEK74HK36'
+      const issuingAccount = publicKey
 
       try {
         const { hash } = await payment(

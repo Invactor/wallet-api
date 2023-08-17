@@ -9,18 +9,19 @@ import {
 } from 'stellar-sdk'
 
 
-export const AnchorXUSD = new Asset(
-  'USD',
-  'GBX67BEOABQAELIP2XTC6JXHJPASKYCIQNS7WF6GWPSCBEAJEK74HK36'
-)
-
+// export const AstroDollar = new Asset(
+//   'AstroDollar',
+//   'GC2BKLYOOYPDEFJKLKY6FNNRQMGFLVHJKQRGNSSRRGSMPGF32LHCQVGF'
+// )
+export const asset =  Asset.native()
+//critical data 
+const secretKey="SDFMDZI3GG3SJ3RNY4IA7D5NQAKB52Z5L6FZNMLHP6FK34IKWMF2P7OF"
 export async function createAccountInLedger(newAccount: string) {
   try {
     Network.useTestNetwork();
     const stellarServer = new Server('https://horizon-testnet.stellar.org');
-
-    // Never put values like the an account seed in code.
-    const provisionerKeyPair = Keypair.fromSecret('SA72TGXRHE26WC5G5MTNURFUFBHZHTIQKF5AQWRXJMJGZUF4XY6HFWJ4')
+    const provisionerKeyPair = Keypair.fromSecret(secretKey)
+    console.log(provisionerKeyPair.publicKey())
     const provisioner = await stellarServer.loadAccount(provisionerKeyPair.publicKey())
 
     console.log('creating account in ledger', newAccount)
@@ -38,7 +39,7 @@ export async function createAccountInLedger(newAccount: string) {
     const result = await stellarServer.submitTransaction(transaction);
     console.log('Account created: ', result)
   } catch (e) {
-    console.log('Stellar account not created.', e)
+    console.log('Stellar account not created.',e.message)
   }
 }
 
@@ -51,7 +52,7 @@ export async function createTrustline(accountKeypair: Keypair) {
     const transaction = new TransactionBuilder(account)
       .addOperation(
         Operation.changeTrust({
-          asset: AnchorXUSD
+          asset: asset
         }))
       .build();
 
@@ -63,7 +64,7 @@ export async function createTrustline(accountKeypair: Keypair) {
 
     return result
   } catch (e) {
-    console.log('create trustline failed.', e)
+    console.log('create trustline failed.', e.message)
   }
 }
 
@@ -81,7 +82,7 @@ export async function allowTrust(trustor: string) {
       .addOperation(
         Operation.allowTrust({
           trustor,
-          assetCode: AnchorXUSD.code,
+          assetCode: asset.code,
           authorize: true
         })
       )
@@ -91,7 +92,7 @@ export async function allowTrust(trustor: string) {
 
     const result = await stellarServer.submitTransaction(transaction)
 
-    console.log('trust allowed', result)
+    console.log('trust allowed')
 
     return result
   } catch (e) {
@@ -109,10 +110,10 @@ export async function payment(signerKeys: Keypair, destination: string, amount: 
     .addOperation(
       Operation.payment({
         destination,
-        asset: AnchorXUSD,
+        asset: asset,
         amount
       })
-    ).addMemo(Memo.text('https://goo.gl/6pDRPi'))
+    )
     .build()
 
   transaction.sign(signerKeys)
@@ -123,7 +124,7 @@ export async function payment(signerKeys: Keypair, destination: string, amount: 
 
     return result
   } catch (e) {
-    console.log(`failure ${e}`)
+    console.log(`failure ${e.message}`)
     throw e
   }
 }
