@@ -1,7 +1,11 @@
 {
   "name": "anchorx-api",
+  "version": "1.0.0",
+  "description": "Stellar API using TypeScript and GraphQL",
+  "main": "src/index.ts",
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
     "dev": "npm-run-all --parallel start playground",
     "playground": "graphql playground"
   },
@@ -19,5 +23,8 @@
     "npm-run-all": "4.1.3",
     "ts-node": "6.2.0",
     "typescript": "2.9.2"
+  },
+  "engines": {
+    "node": "14.x"
   }
 }
