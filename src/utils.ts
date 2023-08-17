@@ -74,7 +74,7 @@ export async function allowTrust(trustor: string) {
   try {
     // Never store secrets in code! Use something like KMS and put
     // this somewhere were few people can access it.
-    const issuingKeys = Keypair.fromSecret('SBYZ5NEJ34Y3FTKADVBO3Y76U6VLTREJSW4MXYCVMUBTL2K3V4Y644UX')
+    const issuingKeys = Keypair.fromSecret(secretKey)
     const issuingAccount = await stellarServer.loadAccount(issuingKeys.publicKey())
 
     const transaction = new TransactionBuilder(issuingAccount)
